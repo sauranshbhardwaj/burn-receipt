@@ -1,4 +1,4 @@
-import type { TokenCounts, UsageEvent } from "./types.js";
+import type { TokenCounts, UsageEvent } from "./types";
 
 /** USD per million tokens. */
 export type ModelPrice = {

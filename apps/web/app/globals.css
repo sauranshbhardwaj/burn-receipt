@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Same palette as the receipt image (packages/core/src/receipt/tree.ts), so the page and the
+   image feel like one object. The site is dark-only on purpose: it's a terminal. */
+@theme {
+  --color-page: #07090d;
+  --color-window: #0d1117;
+  --color-bar: #161b22;
+  --color-line: #262c36;
+  --color-text: #e6edf3;
+  --color-muted: #7d8590;
+  --color-dim: #3d444d;
+  --color-green: #3fb950;
+  --color-amber: #f0b429;
+  --color-red: #ff6b5e;
+  --color-blue: #58a6ff;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}

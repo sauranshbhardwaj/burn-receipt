@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CLAUDE_PLANS, codexPlanFromType } from "./plans.js";
-import { buildReceiptData, receiptDataSchema } from "./receipt-data.js";
-import { emptyTokens, type TokenCounts, type UsageEvent } from "./types.js";
+import { CLAUDE_PLANS, codexPlanFromType } from "./plans";
+import { buildReceiptData, receiptDataSchema } from "./receipt-data";
+import { emptyTokens, type TokenCounts, type UsageEvent } from "./types";
 
 const RANGE = { since: new Date("2026-10-13T00:00:00Z"), until: new Date("2026-10-20T00:00:00Z") };
 const NOW = new Date("2026-10-20T00:00:00Z");

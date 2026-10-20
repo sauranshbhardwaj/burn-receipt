@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { eventCost, resolvePrice } from "./pricing.js";
-import { emptyTokens, type TokenCounts, type UsageEvent } from "./types.js";
+import { eventCost, resolvePrice } from "./pricing";
+import { emptyTokens, type TokenCounts, type UsageEvent } from "./types";
 
 function event(model: string, tokens: Partial<TokenCounts>, extra: Partial<UsageEvent> = {}): UsageEvent {
   return {

@@ -1,5 +1,5 @@
-import { eventCost, priceMultiplier, resolvePrice } from "./pricing.js";
-import { totalTokens, type UsageEvent } from "./types.js";
+import { eventCost, priceMultiplier, resolvePrice } from "./pricing";
+import { totalTokens, type UsageEvent } from "./types";
 
 const MINUTE_MS = 60_000;
 /** Prompt cache lifetimes. A cache write after a gap longer than its TTL means the cache had expired. */

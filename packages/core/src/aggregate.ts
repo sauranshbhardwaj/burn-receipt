@@ -1,4 +1,4 @@
-import { addTokens, emptyTokens, type Source, type TokenCounts, type UsageEvent } from "./types.js";
+import { addTokens, emptyTokens, type Source, type TokenCounts, type UsageEvent } from "./types";
 
 export type UsageSummary = {
   responses: number;

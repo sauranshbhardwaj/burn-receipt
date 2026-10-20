@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { analyze, LINE_ITEM_ORDER, type Analysis, type LineItemId } from "./analyze.js";
-import { planCostForDays, type Plan } from "./plans.js";
-import { PRICES_AS_OF } from "./pricing.js";
-import type { CodexLimits } from "./sources/codex.js";
-import type { DateRange, Source, UsageEvent } from "./types.js";
+import { analyze, LINE_ITEM_ORDER, type Analysis, type LineItemId } from "./analyze";
+import { planCostForDays, type Plan } from "./plans";
+import { PRICES_AS_OF } from "./pricing";
+import type { CodexLimits } from "./sources/codex";
+import type { DateRange, Source, UsageEvent } from "./types";
 
 /**
  * Everything a receipt shows — and the only thing that ever leaves the user's machine when they

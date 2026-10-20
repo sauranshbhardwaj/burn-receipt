@@ -1,4 +1,4 @@
-import type { ReceiptData } from "../receipt-data.js";
+import type { ReceiptData } from "../receipt-data";
 import {
   formatCount,
   formatHours,
@@ -10,7 +10,7 @@ import {
   plansLabel,
   toolsLabel,
   valueMultiple,
-} from "./format.js";
+} from "./format";
 
 /**
  * A tiny element tree in the shape satori (and next/og) understands, built without React so
@@ -89,7 +89,12 @@ function costBar(line: ReceiptData["lines"][number], maxUsd: number, width: numb
 }
 
 function divider(style: "dashed" | "double", marginTop: number): ReceiptNode {
-  return h("div", { width: "100%", borderTop: `${style === "double" ? 4 : 2}px ${style} ${C.dim}`, marginTop, marginBottom: 18 });
+  // A "double" border is drawn as two solid lines: next/og's bundled satori can't parse `double`.
+  const border: Style =
+    style === "double"
+      ? { height: 6, borderTop: `2px solid ${C.dim}`, borderBottom: `2px solid ${C.dim}` }
+      : { borderTop: `2px dashed ${C.dim}` };
+  return h("div", { width: "100%", ...border, marginTop, marginBottom: 18 });
 }
 
 function callout(mark: string, color: string, headline: string, detail: string): ReceiptNode {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { analyze, LINE_ITEM_ORDER } from "./analyze.js";
-import { emptyTokens, type TokenCounts, type UsageEvent } from "./types.js";
+import { analyze, LINE_ITEM_ORDER } from "./analyze";
+import { emptyTokens, type TokenCounts, type UsageEvent } from "./types";
 
 const M = 1_000_000;
 const T0 = new Date("2026-10-15T10:00:00Z").getTime();

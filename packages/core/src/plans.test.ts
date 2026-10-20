@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codexPlanFromType, isClaudePlanId, planCostForDays } from "./plans.js";
+import { codexPlanFromType, isClaudePlanId, planCostForDays } from "./plans";
 
 describe("plans", () => {
   it("pro-rates a monthly price to a period", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codexSessionDirs, parseCodexFile } from "./codex.js";
+import { codexSessionDirs, parseCodexFile } from "./codex";
 
 const RANGE = { since: new Date("2026-10-01T00:00:00Z"), until: new Date("2026-10-31T00:00:00Z") };
 

@@ -1,5 +1,5 @@
-import type { LineItemId } from "../analyze.js";
-import type { ReceiptData } from "../receipt-data.js";
+import type { LineItemId } from "../analyze";
+import type { ReceiptData } from "../receipt-data";
 
 /** One wording for the terminal, the image and the web page. */
 export const LINE_TEXT: Record<LineItemId, { label: string; hint: string }> = {

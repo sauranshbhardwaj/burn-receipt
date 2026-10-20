@@ -7,7 +7,7 @@ import {
   claudeCodeProjectDirs,
   loadClaudeCodeEvents,
   parseClaudeCodeLine,
-} from "./claude-code.js";
+} from "./claude-code";
 
 const RANGE = { since: new Date("2026-10-01T00:00:00Z"), until: new Date("2026-10-31T00:00:00Z") };
 

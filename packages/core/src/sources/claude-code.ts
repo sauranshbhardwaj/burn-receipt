@@ -1,8 +1,8 @@
 import { homedir } from "node:os";
 import { basename, join, sep } from "node:path";
 import { z } from "zod";
-import { findJsonlFiles, readLines, safeJsonParse } from "./jsonl.js";
-import type { DateRange, UsageEvent } from "../types.js";
+import { findJsonlFiles, readLines, safeJsonParse } from "./jsonl";
+import type { DateRange, UsageEvent } from "../types";
 
 const count = z.number().nonnegative().nullish().transform((n) => n ?? 0);
 
