@@ -24,6 +24,15 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/** "912K", "1.6B" — token counts are too big to read in full. */
+export function formatTokens(n: number): string {
+  const units: [number, string][] = [[1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]];
+  for (const [size, suffix] of units) {
+    if (n >= size) return `${(n / size).toFixed(n / size >= 100 ? 0 : 1).replace(/\.0$/, "")}${suffix}`;
+  }
+  return String(n);
+}
+
 export function formatPercent(share: number): string {
   return `${Math.round(share * 100)}%`;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReceiptData } from "../receipt-data";
-import { formatHours, formatMultiple, formatUsd, periodLabel } from "./format";
+import { formatHours, formatMultiple, formatTokens, formatUsd, periodLabel } from "./format";
 
 const period = (periodDays: number, periodEnd: string) => ({ periodDays, periodEnd }) as ReceiptData;
 
@@ -22,5 +22,12 @@ describe("format", () => {
     expect(formatHours(0.2)).toBe("12 min");
     expect(formatHours(42.3)).toBe("42.3h");
     expect(formatHours(436)).toBe("18 days");
+  });
+
+  it("compacts token counts", () => {
+    expect(formatTokens(950)).toBe("950");
+    expect(formatTokens(900_000)).toBe("900K");
+    expect(formatTokens(1_620_000_000)).toBe("1.6B");
+    expect(formatTokens(250_000_000)).toBe("250M");
   });
 });

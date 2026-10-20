@@ -4,6 +4,7 @@ import {
   formatHours,
   formatMultiple,
   formatPercent,
+  formatTokens,
   formatUsd,
   LINE_TEXT,
   periodLabel,
@@ -31,6 +32,8 @@ export const CARD_SIZE = { width: 1200, height: 630 } as const;
 const PAGE_MARGIN = 36;
 /** How many callouts fit the 4:5 canvas without clipping, given how many line items are shown. */
 const maxCallouts = (lineCount: number) => (lineCount >= 7 ? 2 : 3);
+/** At or below this many lines + callouts, the receipt gets a stats block to fill the space. */
+const SPARSE_CONTENT = 5;
 
 const C = {
   page: "#07090d",
@@ -106,11 +109,42 @@ function callout(mark: string, color: string, headline: string, detail: string):
   );
 }
 
+/** JetBrains Mono glyphs are 0.6em wide, so text width is predictable without measuring. */
+const MONO_ADVANCE = 0.6;
+const textWidth = (text: string, fontSize: number) => Math.ceil(text.length * fontSize * MONO_ADVANCE);
+
+/** Small facts that fill the space on light-usage receipts instead of leaving a void. */
+function statsBlock(data: ReceiptData): ReceiptNode {
+  const rows: [string, string][] = [
+    ["replies", formatCount(data.replies)],
+    ["sessions", formatCount(data.sessions)],
+    ["tokens", formatTokens(data.totalTokens)],
+  ];
+  if (data.topModel) rows.push(["top model", data.topModel]);
+  return h(
+    "div",
+    { flexDirection: "column", marginTop: 22, padding: "16px 20px", border: `2px solid ${C.border}`, borderRadius: 10 },
+    ...rows.map(([label, value]) =>
+      h("div", { justifyContent: "space-between", fontSize: 22, marginBottom: 6 }, h("div", { color: C.muted }, label), h("div", { color: C.text }, value)),
+    ),
+  );
+}
+
+function footnotes(data: ReceiptData): ReceiptNode[] {
+  const notes: string[] = [];
+  if (data.paidUsd === null) notes.push("add --claude-plan or --codex-plan-price to see your money's worth");
+  if (data.unpricedReplies > 0) notes.push(`${formatCount(data.unpricedReplies)} replies from models without a public price weren't counted`);
+  return notes.map((note) => h("div", { fontSize: 19, color: C.muted, marginTop: 12 }, `· ${note}`));
+}
+
 export function receiptTree(data: ReceiptData): ReceiptNode {
   const multiple = valueMultiple(data);
   const plans = plansLabel(data);
   const maxLine = Math.max(...data.lines.map((l) => l.usd), 0.01);
   const sortedLines = [...data.lines].sort((a, b) => b.usd - a.usd);
+  // Size the amount column to the longest amount so "$1,500,000" never collides with its bar.
+  const amountWidth = Math.max(140, ...sortedLines.map((l) => textWidth(formatUsd(l.usd), 26) + 8));
+  const barWidth = Math.max(70, 150 - (amountWidth - 140));
 
   const lineRows = sortedLines.map((line) =>
     h(
@@ -123,8 +157,8 @@ export function receiptTree(data: ReceiptData): ReceiptNode {
         h(
           "div",
           { alignItems: "center" },
-          costBar(line, maxLine, 150),
-          h("div", { fontSize: 26, fontWeight: 700, color: C.text, width: 140, justifyContent: "flex-end" }, formatUsd(line.usd)),
+          costBar(line, maxLine, barWidth),
+          h("div", { fontSize: 26, fontWeight: 700, color: C.text, width: amountWidth, justifyContent: "flex-end" }, formatUsd(line.usd)),
         ),
       ),
       h("div", { fontSize: 18, color: C.muted, marginTop: 2 }, LINE_TEXT[line.id].hint),
@@ -205,6 +239,9 @@ export function receiptTree(data: ReceiptData): ReceiptNode {
           ? h("div", { fontSize: 38, fontWeight: 700, color: C.green, marginTop: 12 }, `> ${formatMultiple(multiple)} your money's worth`)
           : null,
         ...callouts.slice(0, maxCallouts(sortedLines.length)),
+        // Light receipts have room to spare: show the stats rather than a big empty window.
+        sortedLines.length + callouts.length <= SPARSE_CONTENT ? statsBlock(data) : null,
+        ...(sortedLines.length + callouts.length <= SPARSE_CONTENT + 2 ? footnotes(data) : []),
       ),
       h(
         "div",
@@ -255,7 +292,8 @@ export function cardTree(data: ReceiptData): ReceiptNode {
           "div",
           { flexDirection: "column", width: 520 },
           h("div", { fontSize: 30, fontWeight: 700, color: C.amber, letterSpacing: 3 }, "BURN RECEIPT"),
-          h("div", { fontSize: 92, fontWeight: 700, color: C.amber, marginTop: 10 }, formatUsd(data.totalUsd)),
+          // Shrink very large totals so they never spill into the right column.
+          h("div", { fontSize: Math.min(92, Math.floor(510 / (formatUsd(data.totalUsd).length * MONO_ADVANCE))), fontWeight: 700, color: C.amber, marginTop: 10 }, formatUsd(data.totalUsd)),
           h(
             "div",
             { fontSize: 28, color: C.text, marginTop: 2 },
