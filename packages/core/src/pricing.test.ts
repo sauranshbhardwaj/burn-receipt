@@ -39,8 +39,20 @@ describe("resolvePrice", () => {
 
   it("does not match a different model that merely shares characters", () => {
     expect(resolvePrice("claude-opus-50")).toBeNull();
-    expect(resolvePrice("gpt-5.5")).toBeNull();
+    expect(resolvePrice("gpt-6.1-solar")).toBeNull();
+    expect(resolvePrice("codex-auto-review")).toBeNull();
     expect(resolvePrice("")).toBeNull();
+  });
+
+  it("prices OpenAI models, billing writes as input where no write rate exists", () => {
+    expect(resolvePrice("gpt-6.1-sol")).toMatchObject({ input: 2, cacheRead: 0.1, cacheWrite5m: 2.5, output: 10 });
+    expect(resolvePrice("gpt-5.5")).toMatchObject({ input: 5, cacheWrite5m: 5, cacheWrite1h: 5 });
+    expect(resolvePrice("gpt-6-sol")?.cacheRead).toBe(0.2);
+  });
+
+  it("switches OpenAI models to long-context prices strictly above 272k prompt tokens", () => {
+    expect(resolvePrice("gpt-5.5", { ...emptyTokens(), cacheRead: 272_000 })?.output).toBe(30);
+    expect(resolvePrice("gpt-5.5", { ...emptyTokens(), cacheRead: 272_000, input: 1 })?.output).toBe(45);
   });
 
   it("switches Haiku 5.5 to long-prompt prices strictly above 100k prompt tokens", () => {

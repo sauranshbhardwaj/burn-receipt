@@ -16,9 +16,7 @@ const MILLION = 1_000_000;
 const FAST_MODE_MULTIPLIER = 2;
 const US_ONLY_INFERENCE_MULTIPLIER = 1.1;
 const WEB_SEARCH_USD = 10 / 1000;
-
-/** Haiku 5.5 is the one model billed by prompt length: over this, a request pays the higher tier. */
-const HAIKU_LONG_PROMPT_THRESHOLD = 100_000;
+const OPENAI_LONG_CONTEXT_OVER = 272_000;
 
 const p = (input: number, cacheWrite5m: number, cacheWrite1h: number, cacheRead: number, output: number): ModelPrice => ({
   input,
@@ -28,53 +26,83 @@ const p = (input: number, cacheWrite5m: number, cacheWrite1h: number, cacheRead:
   output,
 });
 
+/** OpenAI has one cache-write rate (no TTL split); models without one bill writes as normal input. */
+const openai = (input: number, cachedInput: number, cacheWrite: number | null, output: number): ModelPrice =>
+  p(input, cacheWrite ?? input, cacheWrite ?? input, cachedInput, output);
+
+/** Some models bill a whole request at a higher tier once its prompt passes a size threshold. */
+type PriceEntry = { base: ModelPrice; longPrompt?: { over: number; price: ModelPrice } };
+
 /**
- * Anthropic first-party API rates, keyed by model-id prefix so dated snapshot ids
- * (e.g. "claude-sonnet-4-5-20250929") resolve too.
- * Source: https://platform.claude.com/docs/en/about-claude/pricing (fetched 2026-10-20).
+ * Keyed by model-id prefix so dated snapshot ids (e.g. "claude-sonnet-4-5-20250929") resolve too.
+ * Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (fetched 2026-10-20).
+ * OpenAI: https://developers.openai.com/api/docs/pricing (fetched 2026-10-20). gpt-5.6-sol is
+ * promotional pricing "at least through November 21, 2026".
  */
-const CLAUDE_PRICES: Record<string, ModelPrice> = {
-  "claude-fable-5-1": p(10, 12.5, 20, 0.25, 50),
-  "claude-mythos-5-1": p(10, 12.5, 20, 0.25, 50),
-  "claude-fable-5": p(10, 12.5, 20, 1, 50),
-  "claude-mythos-5": p(10, 12.5, 20, 1, 50),
-  "claude-opus-5-5": p(4, 5, 8, 0.2, 20),
-  "claude-opus-5": p(5, 6.25, 10, 0.5, 25),
-  "claude-opus-4-8": p(5, 6.25, 10, 0.5, 25),
-  "claude-opus-4-7": p(5, 6.25, 10, 0.5, 25),
-  "claude-opus-4-6": p(5, 6.25, 10, 0.5, 25),
-  "claude-opus-4-5": p(5, 6.25, 10, 0.5, 25),
-  "claude-opus-4-1": p(15, 18.75, 30, 1.5, 75),
-  "claude-opus-4": p(15, 18.75, 30, 1.5, 75),
-  "claude-sonnet-5-5": p(2, 2.5, 4, 0.1, 10),
-  "claude-sonnet-5": p(2, 2.5, 4, 0.2, 10),
-  "claude-sonnet-4-6": p(3, 3.75, 6, 0.3, 15),
-  "claude-sonnet-4-5": p(3, 3.75, 6, 0.3, 15),
-  "claude-sonnet-4": p(3, 3.75, 6, 0.3, 15),
-  "claude-haiku-5-5": p(0.1, 0.125, 0.2, 0.01, 0.5),
-  "claude-haiku-4-5": p(1, 1.25, 2, 0.1, 5),
-  "claude-3-5-haiku": p(0.8, 1, 1.6, 0.08, 4),
+const PRICES: Record<string, PriceEntry> = {
+  "claude-fable-5-1": { base: p(10, 12.5, 20, 0.25, 50) },
+  "claude-mythos-5-1": { base: p(10, 12.5, 20, 0.25, 50) },
+  "claude-fable-5": { base: p(10, 12.5, 20, 1, 50) },
+  "claude-mythos-5": { base: p(10, 12.5, 20, 1, 50) },
+  "claude-opus-5-5": { base: p(4, 5, 8, 0.2, 20) },
+  "claude-opus-5": { base: p(5, 6.25, 10, 0.5, 25) },
+  "claude-opus-4-8": { base: p(5, 6.25, 10, 0.5, 25) },
+  "claude-opus-4-7": { base: p(5, 6.25, 10, 0.5, 25) },
+  "claude-opus-4-6": { base: p(5, 6.25, 10, 0.5, 25) },
+  "claude-opus-4-5": { base: p(5, 6.25, 10, 0.5, 25) },
+  "claude-opus-4-1": { base: p(15, 18.75, 30, 1.5, 75) },
+  "claude-opus-4": { base: p(15, 18.75, 30, 1.5, 75) },
+  "claude-sonnet-5-5": { base: p(2, 2.5, 4, 0.1, 10) },
+  "claude-sonnet-5": { base: p(2, 2.5, 4, 0.2, 10) },
+  "claude-sonnet-4-6": { base: p(3, 3.75, 6, 0.3, 15) },
+  "claude-sonnet-4-5": { base: p(3, 3.75, 6, 0.3, 15) },
+  "claude-sonnet-4": { base: p(3, 3.75, 6, 0.3, 15) },
+  "claude-haiku-5-5": {
+    base: p(0.1, 0.125, 0.2, 0.01, 0.5),
+    longPrompt: { over: 100_000, price: p(0.5, 0.625, 1, 0.05, 2.5) },
+  },
+  "claude-haiku-4-5": { base: p(1, 1.25, 2, 0.1, 5) },
+  "claude-3-5-haiku": { base: p(0.8, 1, 1.6, 0.08, 4) },
+
+  "gpt-6.1-sol": {
+    base: openai(2, 0.1, 2.5, 10),
+    longPrompt: { over: OPENAI_LONG_CONTEXT_OVER, price: openai(4, 0.2, 5, 15) },
+  },
+  "gpt-6-sol": {
+    base: openai(2, 0.2, 2.5, 10),
+    longPrompt: { over: OPENAI_LONG_CONTEXT_OVER, price: openai(4, 0.4, 5, 15) },
+  },
+  "gpt-6-luna": {
+    base: openai(0.1, 0.01, 0.125, 0.5),
+    longPrompt: { over: OPENAI_LONG_CONTEXT_OVER, price: openai(0.2, 0.02, 0.25, 0.75) },
+  },
+  "gpt-5.6-sol": {
+    base: openai(4, 0.4, 5, 20),
+    longPrompt: { over: OPENAI_LONG_CONTEXT_OVER, price: openai(8, 0.8, 10, 30) },
+  },
+  "gpt-5.5": {
+    base: openai(5, 0.5, null, 30),
+    longPrompt: { over: OPENAI_LONG_CONTEXT_OVER, price: openai(10, 1, null, 45) },
+  },
+  "gpt-5.3-codex": { base: openai(1.75, 0.175, null, 14) },
 };
 
-const HAIKU_5_5_LONG_PROMPT = p(0.5, 0.625, 1, 0.05, 2.5);
-
 // Longest prefix first, so "claude-opus-5-5" wins over "claude-opus-5".
-const PRICE_KEYS = Object.keys(CLAUDE_PRICES).sort((a, b) => b.length - a.length);
+const PRICE_KEYS = Object.keys(PRICES).sort((a, b) => b.length - a.length);
+
+function promptLength(t: TokenCounts): number {
+  return t.input + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
+}
 
 /** Returns null for models we don't have a price for — better an honest gap than a guess. */
 export function resolvePrice(rawModel: string, tokens?: TokenCounts): ModelPrice | null {
   // Claude Code tags 1M-context selections like "claude-opus-5[1m]"; the price is the same.
   const model = rawModel.replace(/\[[^\]]*\]$/, "");
   const key = PRICE_KEYS.find((prefix) => model === prefix || model.startsWith(`${prefix}-`));
-  if (!key) return null;
-  if (key === "claude-haiku-5-5" && tokens && promptLength(tokens) > HAIKU_LONG_PROMPT_THRESHOLD) {
-    return HAIKU_5_5_LONG_PROMPT;
-  }
-  return CLAUDE_PRICES[key] ?? null;
-}
-
-function promptLength(t: TokenCounts): number {
-  return t.input + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
+  const entry = key ? PRICES[key] : undefined;
+  if (!entry) return null;
+  if (entry.longPrompt && tokens && promptLength(tokens) > entry.longPrompt.over) return entry.longPrompt.price;
+  return entry.base;
 }
 
 export type CostBreakdown = {
@@ -85,17 +113,6 @@ export type CostBreakdown = {
   webSearch: number;
   total: number;
 };
-
-export const emptyCost = (): CostBreakdown => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, webSearch: 0, total: 0 });
-
-export function addCost(target: CostBreakdown, add: CostBreakdown): void {
-  target.input += add.input;
-  target.output += add.output;
-  target.cacheRead += add.cacheRead;
-  target.cacheWrite += add.cacheWrite;
-  target.webSearch += add.webSearch;
-  target.total += add.total;
-}
 
 /** Fast mode and US-only inference multiply every token category (caching multipliers stack on top). */
 export function priceMultiplier(event: Pick<UsageEvent, "speed" | "inferenceGeo">): number {
