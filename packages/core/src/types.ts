@@ -21,6 +21,11 @@ export type UsageEvent = {
   isSubagent: boolean;
   usedTools: boolean;
   tokens: TokenCounts;
+  /** "fast" doubles the price on models that support fast mode. */
+  speed: "standard" | "fast";
+  /** "us" (US-only inference) adds a 1.1x multiplier; anything else is standard routing. */
+  inferenceGeo: string | null;
+  webSearches: number;
 };
 
 export type DateRange = { since: Date; until: Date };

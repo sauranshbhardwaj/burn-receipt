@@ -30,6 +30,9 @@ const assistantRecordSchema = z.object({
         })
         .nullish(),
       output_tokens_details: z.object({ thinking_tokens: count }).nullish(),
+      server_tool_use: z.object({ web_search_requests: count }).nullish(),
+      speed: z.string().nullish(),
+      inference_geo: z.string().nullish(),
     }),
   }),
 });
@@ -86,6 +89,9 @@ export function parseClaudeCodeLine(line: string, filePath: string): ParsedLine 
         cacheWrite1h,
         reasoning: usage.output_tokens_details?.thinking_tokens ?? 0,
       },
+      speed: usage.speed === "fast" ? "fast" : "standard",
+      inferenceGeo: usage.inference_geo ?? null,
+      webSearches: usage.server_tool_use?.web_search_requests ?? 0,
     },
   };
 }
