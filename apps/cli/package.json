@@ -4,7 +4,7 @@
   "description": "See where your AI coding plan really burned — as a receipt.",
   "type": "module",
   "bin": {
-    "burn-receipt": "./dist/cli.js"
+    "burn-receipt": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -23,8 +23,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "tsup": "^9.0.0",
-    "@burn-receipt/core": "workspace:*"
+    "@burn-receipt/core": "workspace:*",
+    "tsup": "^9.0.0"
   },
   "engines": {
     "node": ">=20"
