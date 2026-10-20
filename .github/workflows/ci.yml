@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm --filter @burn-receipt/core --filter burn-receipt typecheck
+      - run: pnpm --filter @burn-receipt/web lint
+      - run: pnpm --filter burn-receipt build
+      # Smoke test: the packed CLI runs on a machine with no AI history and exits cleanly.
+      - run: |
+          cd apps/cli && npm pack --pack-destination /tmp
+          mkdir /tmp/smoke && cd /tmp/smoke && npm init -y >/dev/null
+          npm install /tmp/burn-receipt-*.tgz
+          HOME=/tmp/smoke npx burn-receipt --no-image | tee out.txt
+          grep -q "No Claude Code or Codex usage found" out.txt
