@@ -6,3 +6,4 @@ dist
 *.png
 coverage
 .DS_Store
+.vercel
