@@ -38,7 +38,7 @@ async function Receipt({ params }: Props) {
   ];
 
   return (
-    <article className="grid gap-8 md:grid-cols-[minmax(0,1fr)_280px]">
+    <article className="grid min-w-0 gap-8 md:grid-cols-[minmax(0,1fr)_300px]">
       {/* eslint-disable-next-line @next/next/no-img-element -- dynamic PNG from our own route, already sized */}
       <img
         src={`/r/${id}/receipt.png`}
@@ -47,7 +47,7 @@ async function Receipt({ params }: Props) {
         height={1350}
         className="h-auto w-full rounded-xl border border-line"
       />
-      <aside className="flex flex-col gap-6">
+      <aside className="flex min-w-0 flex-col gap-6">
         <div>
           <p className="text-sm text-muted">
             {toolsLabel(data)} · {periodLabel(data)}
@@ -71,8 +71,8 @@ async function Receipt({ params }: Props) {
           <a href={redditShareUrl(data, pageUrl)} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-line px-4 py-2 text-center hover:border-amber">
             Share on Reddit
           </a>
-          <div className="flex items-center justify-between rounded-lg border border-line px-4 py-2 text-sm">
-            <span className="truncate text-muted">{pageUrl}</span>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-line px-4 py-2 text-sm">
+            <span className="min-w-0 truncate text-muted">{pageUrl}</span>
             <CopyButton text={pageUrl} label="copy link" />
           </div>
         </div>
