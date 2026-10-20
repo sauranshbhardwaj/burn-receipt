@@ -26,9 +26,22 @@ const CODEX_PLAN_TYPES: Record<string, Plan> = {
   pro: { id: "pro", label: "ChatGPT Pro", monthlyUsd: 200 },
 };
 
+/** Plans we don't recognize share one generic label, so a raw plan_type never reaches a receipt. */
+const OTHER_CODEX_PLAN: Plan = { id: "other", label: "ChatGPT (other plan)", monthlyUsd: null };
+
 export function codexPlanFromType(planType: string | null): Plan | null {
   if (!planType) return null;
-  return (Object.hasOwn(CODEX_PLAN_TYPES, planType) ? CODEX_PLAN_TYPES[planType] : undefined) ?? { id: planType, label: `ChatGPT ${planType}`, monthlyUsd: null };
+  return (Object.hasOwn(CODEX_PLAN_TYPES, planType) ? CODEX_PLAN_TYPES[planType] : undefined) ?? OTHER_CODEX_PLAN;
+}
+
+const ALL_PLANS: Plan[] = [...Object.values(CLAUDE_PLANS), ...Object.values(CODEX_PLAN_TYPES), OTHER_CODEX_PLAN];
+
+/** The only plan labels a shared receipt may carry. */
+export const PLAN_LABELS = ALL_PLANS.map((plan) => plan.label) as [string, ...string[]];
+
+/** Public monthly price for a plan label; null when the price is user-supplied or unknown. */
+export function publicMonthlyPrice(label: string): number | null {
+  return ALL_PLANS.find((plan) => plan.label === label)?.monthlyUsd ?? null;
 }
 
 const DAYS_PER_YEAR = 365;

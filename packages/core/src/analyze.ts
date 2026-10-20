@@ -1,4 +1,4 @@
-import { eventCost, priceMultiplier, resolvePrice } from "./pricing";
+import { eventCost, priceMultiplier, promptTokensOf, resolvePrice } from "./pricing";
 import { totalTokens, type UsageEvent } from "./types";
 
 const MINUTE_MS = 60_000;
@@ -114,7 +114,7 @@ export function analyze(events: UsageEvent[]): Analysis {
       if (index === 0 && event.isSubagent) session.subagents += 1;
 
       const cost = eventCost(event);
-      const price = resolvePrice(event.model, event.tokens);
+      const price = resolvePrice(event.model, promptTokensOf(event));
       if (!cost || !price) {
         analysis.unpricedResponses += 1;
         unpriced.add(event.model);

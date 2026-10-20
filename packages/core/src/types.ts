@@ -28,6 +28,11 @@ export type UsageEvent = {
   /** "us" (US-only inference) adds a 1.1x multiplier; anything else is standard routing. */
   inferenceGeo: string | null;
   webSearches: number;
+  /**
+   * Prompt size of the single request this event ends with, when the event merges several
+   * requests (Codex). Price tiers apply per request, so this — not the merged total — picks the tier.
+   */
+  promptTokens?: number;
 };
 
 export type DateRange = { since: Date; until: Date };

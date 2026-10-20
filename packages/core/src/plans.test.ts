@@ -10,7 +10,8 @@ describe("plans", () => {
   it("maps Codex plan types, keeping unconfirmed prices null", () => {
     expect(codexPlanFromType("plus")?.monthlyUsd).toBe(20);
     expect(codexPlanFromType("prolite")?.monthlyUsd).toBeNull();
-    expect(codexPlanFromType("enterprise")).toEqual({ id: "enterprise", label: "ChatGPT enterprise", monthlyUsd: null });
+    // Unknown plan types never echo the raw value onto a receipt.
+    expect(codexPlanFromType("enterprise_acme_corp")).toEqual({ id: "other", label: "ChatGPT (other plan)", monthlyUsd: null });
     expect(codexPlanFromType(null)).toBeNull();
   });
 

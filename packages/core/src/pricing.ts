@@ -94,14 +94,34 @@ function promptLength(t: TokenCounts): number {
   return t.input + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
 }
 
-/** Returns null for models we don't have a price for — better an honest gap than a guess. */
-export function resolvePrice(rawModel: string, tokens?: TokenCounts): ModelPrice | null {
+/** Every model id we can price — also the only model names a shared receipt may contain. */
+export const PRICED_MODEL_IDS = Object.keys(PRICES) as [string, ...string[]];
+
+/**
+ * The canonical price-table id for a logged model name, e.g. "claude-opus-5-5[1m]" or a
+ * dated snapshot → "claude-opus-5-5". Shared receipts use this, never the raw logged string,
+ * which could carry a company's internal gateway alias.
+ */
+export function canonicalModelId(rawModel: string): string | null {
   // Claude Code tags 1M-context selections like "claude-opus-5[1m]"; the price is the same.
   const model = rawModel.replace(/\[[^\]]*\]$/, "");
-  const key = PRICE_KEYS.find((prefix) => model === prefix || model.startsWith(`${prefix}-`));
+  return PRICE_KEYS.find((prefix) => model === prefix || model.startsWith(`${prefix}-`)) ?? null;
+}
+
+/**
+ * Tokens in the prompt of a single request — what long-context price tiers are based on.
+ * Codex events can merge several calls, so they carry the last call's prompt size explicitly.
+ */
+export function promptTokensOf(event: Pick<UsageEvent, "tokens" | "promptTokens">): number {
+  return event.promptTokens ?? promptLength(event.tokens);
+}
+
+/** Returns null for models we don't have a price for — better an honest gap than a guess. */
+export function resolvePrice(rawModel: string, promptTokens?: number): ModelPrice | null {
+  const key = canonicalModelId(rawModel);
   const entry = key ? PRICES[key] : undefined;
   if (!entry) return null;
-  if (entry.longPrompt && tokens && promptLength(tokens) > entry.longPrompt.over) return entry.longPrompt.price;
+  if (entry.longPrompt && promptTokens !== undefined && promptTokens > entry.longPrompt.over) return entry.longPrompt.price;
   return entry.base;
 }
 
@@ -121,7 +141,7 @@ export function priceMultiplier(event: Pick<UsageEvent, "speed" | "inferenceGeo"
 
 /** API-equivalent cost of one response, or null if the model is unpriced. */
 export function eventCost(event: UsageEvent): CostBreakdown | null {
-  const price = resolvePrice(event.model, event.tokens);
+  const price = resolvePrice(event.model, promptTokensOf(event));
   if (!price) return null;
 
   const multiplier = priceMultiplier(event);

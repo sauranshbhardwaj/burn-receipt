@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventCost, resolvePrice } from "./pricing";
+import { canonicalModelId, eventCost, resolvePrice } from "./pricing";
 import { emptyTokens, type TokenCounts, type UsageEvent } from "./types";
 
 function event(model: string, tokens: Partial<TokenCounts>, extra: Partial<UsageEvent> = {}): UsageEvent {
@@ -51,13 +51,22 @@ describe("resolvePrice", () => {
   });
 
   it("switches OpenAI models to long-context prices strictly above 272k prompt tokens", () => {
-    expect(resolvePrice("gpt-5.5", { ...emptyTokens(), cacheRead: 272_000 })?.output).toBe(30);
-    expect(resolvePrice("gpt-5.5", { ...emptyTokens(), cacheRead: 272_000, input: 1 })?.output).toBe(45);
+    expect(resolvePrice("gpt-5.5", 272_000)?.output).toBe(30);
+    expect(resolvePrice("gpt-5.5", 272_001)?.output).toBe(45);
   });
 
   it("switches Haiku 5.5 to long-prompt prices strictly above 100k prompt tokens", () => {
-    expect(resolvePrice("claude-haiku-5-5", { ...emptyTokens(), cacheRead: 100_000 })?.input).toBe(0.1);
-    expect(resolvePrice("claude-haiku-5-5", { ...emptyTokens(), cacheRead: 99_000, input: 1_001 })?.input).toBe(0.5);
+    expect(resolvePrice("claude-haiku-5-5", 100_000)?.input).toBe(0.1);
+    expect(resolvePrice("claude-haiku-5-5", 100_001)?.input).toBe(0.5);
+  });
+});
+
+describe("canonicalModelId", () => {
+  it("maps logged names to price-table ids and never echoes custom suffixes", () => {
+    expect(canonicalModelId("claude-opus-5-5[1m]")).toBe("claude-opus-5-5");
+    expect(canonicalModelId("claude-sonnet-4-5-20250929")).toBe("claude-sonnet-4-5");
+    expect(canonicalModelId("claude-opus-5-5-acme-internal-prod")).toBe("claude-opus-5-5");
+    expect(canonicalModelId("codex-auto-review")).toBeNull();
   });
 });
 
@@ -83,6 +92,13 @@ describe("eventCost", () => {
     const cost = eventCost(event("claude-sonnet-5-5", {}, { webSearches: 3, speed: "fast" }));
     expect(cost?.webSearch).toBeCloseTo(0.03, 10);
     expect(cost?.total).toBeCloseTo(0.03, 10);
+  });
+
+  it("picks the price tier from the request's own prompt size when an event merges calls", () => {
+    // 380k tokens merged across calls, but the last request's prompt was only 65k: standard tier.
+    const merged = event("gpt-5.5", { input: 380_000 }, { promptTokens: 65_000 });
+    expect(eventCost(merged)?.input).toBeCloseTo(0.38 * 5, 10);
+    expect(eventCost(event("gpt-5.5", { input: 380_000 }))?.input).toBeCloseTo(0.38 * 10, 10);
   });
 
   it("returns null for unknown models instead of guessing", () => {

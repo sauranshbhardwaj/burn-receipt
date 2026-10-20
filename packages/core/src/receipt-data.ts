@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { analyze, LINE_ITEM_ORDER, type Analysis, type LineItemId } from "./analyze";
-import { planCostForDays, type Plan } from "./plans";
-import { PRICES_AS_OF } from "./pricing";
+import { PLAN_LABELS, planCostForDays, publicMonthlyPrice, type Plan } from "./plans";
+import { canonicalModelId, PRICED_MODEL_IDS, PRICES_AS_OF } from "./pricing";
 import type { CodexLimits } from "./sources/codex";
 import type { DateRange, Source, UsageEvent } from "./types";
 
@@ -11,6 +11,7 @@ import type { DateRange, Source, UsageEvent } from "./types";
  * schema is strict so the share API can reject anything else.
  */
 const usd = z.number().finite().nonnegative().max(10_000_000);
+const MAX_PLAUSIBLE_USD_PER_DAY = 5_000;
 const count = z.number().int().nonnegative().max(1_000_000_000);
 const share = z.number().finite().min(0).max(1);
 const percent = z.number().finite().min(0).max(1000);
@@ -26,7 +27,7 @@ export const receiptDataSchema = z
           .object({
             source: z.enum(["claude-code", "codex"]),
             costUsd: usd,
-            planLabel: z.string().regex(/^[A-Za-z0-9 ().$-]{1,40}$/).nullable(),
+            planLabel: z.enum(PLAN_LABELS).nullable(),
             planUsdForPeriod: usd.nullable(),
           })
           .strict(),
@@ -46,7 +47,7 @@ export const receiptDataSchema = z
     replies: count,
     sessions: count,
     totalTokens: z.number().int().nonnegative().max(1e15),
-    topModel: z.string().regex(/^[a-z0-9.\-[\]]{1,40}$/).nullable(),
+    topModel: z.enum(PRICED_MODEL_IDS).nullable(),
     codexLimits: z
       .object({ fiveHourUsedPercent: percent.nullable(), weeklyUsedPercent: percent.nullable() })
       .strict()
@@ -72,6 +73,30 @@ export const receiptDataSchema = z
     if (new Set(data.lines.map((l) => l.id)).size !== data.lines.length) {
       ctx.addIssue({ code: "custom", path: ["lines"], message: "Each line item may appear once." });
     }
+    if (new Set(data.tools.map((t) => t.source)).size !== data.tools.length) {
+      ctx.addIssue({ code: "custom", path: ["tools"], message: "Each tool may appear once." });
+    }
+    if (data.priciestSessionUsd > data.totalUsd + slack(data.totalUsd)) {
+      ctx.addIssue({ code: "custom", path: ["priciestSessionUsd"], message: "A session can't cost more than the total." });
+    }
+    // Far above the heaviest real usage we've seen (~$300/day); keeps fantasy numbers off the board.
+    if (data.totalUsd > MAX_PLAUSIBLE_USD_PER_DAY * data.periodDays) {
+      ctx.addIssue({ code: "custom", path: ["totalUsd"], message: "That's more than any real plan could burn." });
+    }
+    data.tools.forEach((tool, i) => {
+      const monthly = tool.planLabel === null ? null : publicMonthlyPrice(tool.planLabel);
+      if (monthly === null || tool.planUsdForPeriod === null) return;
+      // A tool is billed for 1..periodDays days, depending on when its history starts.
+      const min = planCostForDays(monthly, 1) - 0.01;
+      const max = planCostForDays(monthly, data.periodDays) + 0.01;
+      if (tool.planUsdForPeriod < min || tool.planUsdForPeriod > max) {
+        ctx.addIssue({ code: "custom", path: ["tools", i, "planUsdForPeriod"], message: "Plan cost doesn't match the plan's price." });
+      }
+    });
+    const planTotal = data.tools.reduce((sum, t) => sum + (t.planUsdForPeriod ?? 0), 0);
+    if (data.paidUsd !== null && Math.abs(data.paidUsd - planTotal) > 0.05) {
+      ctx.addIssue({ code: "custom", path: ["paidUsd"], message: "Paid must equal the plans' cost." });
+    }
   });
 
 export type ReceiptData = z.infer<typeof receiptDataSchema>;
@@ -96,10 +121,18 @@ function liveLimits(limits: CodexLimits | null, now: Date): ReceiptData["codexLi
 function topModel(a: Analysis): string | null {
   let best: [string, number] | null = null;
   for (const entry of a.costByModel) if (!best || entry[1] > best[1]) best = entry;
-  return best ? best[0].replace(/\[[^\]]*\]$/, "").toLowerCase() : null;
+  return best ? canonicalModelId(best[0]) : null;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * True when every plan on the receipt has a public price, so "x your money's worth" can't be
+ * inflated by a typed-in price. Only these receipts compete on the value board.
+ */
+export function hasPublicPlanPrices(data: ReceiptData): boolean {
+  return data.paidUsd !== null && data.tools.every((t) => t.planLabel !== null && publicMonthlyPrice(t.planLabel) !== null);
+}
 const DAY_MS = 86_400_000;
 
 /** Whole days from the later of (range start, first usage) to the range end; at least 1. */

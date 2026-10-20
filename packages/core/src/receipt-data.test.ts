@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLAUDE_PLANS, codexPlanFromType } from "./plans";
-import { buildReceiptData, receiptDataSchema } from "./receipt-data";
+import { buildReceiptData, hasPublicPlanPrices, receiptDataSchema } from "./receipt-data";
 import { emptyTokens, type TokenCounts, type UsageEvent } from "./types";
 
 const RANGE = { since: new Date("2026-10-13T00:00:00Z"), until: new Date("2026-10-20T00:00:00Z") };
@@ -130,6 +130,39 @@ describe("receiptDataSchema", () => {
   it("accepts rounding differences of a few cents", () => {
     const good = valid();
     expect(receiptDataSchema.safeParse({ ...good, totalUsd: good.totalUsd + 0.03 }).success).toBe(true);
+  });
+
+  it("rejects the review's attack payloads: fantasy totals, scam labels, fake plan costs", () => {
+    const good = buildReceiptData({
+      range: RANGE,
+      tools: [{ source: "claude-code", events: claudeEvents, plan: CLAUDE_PLANS.max20x }],
+      now: NOW,
+    });
+    expect(receiptDataSchema.safeParse(good).success).toBe(true);
+    const tool = good.tools[0]!;
+    const attacks: Record<string, unknown> = {
+      fantasyTotal: { ...good, totalUsd: 10_000_000, lines: [{ id: "rereading", usd: 10_000_000 }], tools: [{ ...tool, costUsd: 10_000_000 }] },
+      scamPlanLabel: { ...good, tools: [{ ...tool, planLabel: "FREE TOKENS AT SCAM.EXAMPLE" }] },
+      scamModel: { ...good, topModel: "visit.scam.example" },
+      tinyPlanCost: { ...good, tools: [{ ...tool, planUsdForPeriod: 0.0001 }], paidUsd: 0.0001 },
+      paidMismatch: { ...good, paidUsd: 0.01 },
+      priciestOverTotal: { ...good, priciestSessionUsd: good.totalUsd * 2 },
+      duplicateTool: { ...good, tools: [tool, tool] },
+    };
+    for (const [name, payload] of Object.entries(attacks)) {
+      expect(receiptDataSchema.safeParse(payload).success, name).toBe(false);
+    }
+  });
+
+  it("only treats receipts with publicly priced plans as board-eligible for value", () => {
+    const priced = buildReceiptData({ range: RANGE, tools: [{ source: "claude-code", events: claudeEvents, plan: CLAUDE_PLANS.max20x }], now: NOW });
+    const typedIn = buildReceiptData({
+      range: RANGE,
+      tools: [{ source: "codex", events: codexEvents, plan: { ...codexPlanFromType("prolite")!, monthlyUsd: 1 } }],
+      now: NOW,
+    });
+    expect(hasPublicPlanPrices(priced)).toBe(true);
+    expect(hasPublicPlanPrices(typedIn)).toBe(false);
   });
 
   it("rejects absurd or negative numbers", () => {

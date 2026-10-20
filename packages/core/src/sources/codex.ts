@@ -159,6 +159,8 @@ export async function parseCodexFile(
       speed: "standard",
       inferenceGeo: null,
       webSearches: 0,
+      // When a running-total delta spans several calls, the price tier follows the last call.
+      ...(last ? { promptTokens: last.input_tokens } : {}),
     });
   }
 
