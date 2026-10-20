@@ -5,9 +5,12 @@ import { fetchBoard, fetchReceipt, type BoardEntry } from "./store";
 /** A receipt never changes after it's created, so it can stay cached for as long as Next allows. */
 export async function getReceipt(id: string) {
   "use cache";
-  cacheLife("max");
   cacheTag(`receipt:${id}`);
-  return fetchReceipt(id);
+  const receipt = await fetchReceipt(id);
+  // Don't remember "not found" for long: it's cheap to re-check and could change.
+  if (receipt) cacheLife("max");
+  else cacheLife("seconds");
+  return receipt;
 }
 
 /** The public boards refresh every few minutes; nobody needs them to the second. */

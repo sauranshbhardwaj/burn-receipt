@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/copy-button";
 import { InstallCommand } from "@/components/install-command";
 import { getReceipt } from "@/lib/receipts";
 import { redditShareUrl, shareHeadline, xShareUrl } from "@/lib/share-text";
+import { SITE_URL } from "@/lib/site";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -29,7 +30,7 @@ async function Receipt({ params }: Props) {
   const data = await getReceipt(id);
   if (!data) notFound();
 
-  const pageUrl = new URL(`/r/${id}`, process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").toString();
+  const pageUrl = new URL(`/r/${id}`, SITE_URL).toString();
   const stats = [
     ["replies", formatCount(data.replies)],
     ["sessions", formatCount(data.sessions)],

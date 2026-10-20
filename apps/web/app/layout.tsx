@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: "Burn Receipt — where your AI coding plan really went",
   description:
     "One command reads your local Claude Code and Codex history and prints a receipt: what your plan was really worth at API prices, and what was avoidable.",

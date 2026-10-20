@@ -105,6 +105,21 @@ describe("buildReceiptData", () => {
   });
 });
 
+describe("codex limits without a reset time", () => {
+  it("only shows a snapshot younger than its window", () => {
+    const snapshot = (observedAt: string) => ({
+      observedAt: new Date(observedAt),
+      planType: "plus",
+      primary: null,
+      secondary: { usedPercent: 95, windowMinutes: 10080, resetsAt: null },
+    });
+    const build = (observedAt: string) =>
+      buildReceiptData({ range: RANGE, tools: [{ source: "codex", events: codexEvents, plan: null }], codexLimits: snapshot(observedAt), now: NOW });
+    expect(build("2026-10-18T00:00:00Z").codexLimits?.weeklyUsedPercent).toBe(95);
+    expect(build("2026-06-01T00:00:00Z").codexLimits).toBeNull();
+  });
+});
+
 describe("receiptDataSchema", () => {
   const valid = () =>
     buildReceiptData({ range: RANGE, tools: [{ source: "codex", events: codexEvents, plan: null }], now: NOW });

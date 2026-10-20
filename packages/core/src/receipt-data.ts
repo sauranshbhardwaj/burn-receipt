@@ -109,8 +109,11 @@ const ONE_WEEK_MIN = 7 * 24 * 60;
 /** A limit snapshot is only worth printing while its window hasn't reset yet. */
 function liveLimits(limits: CodexLimits | null, now: Date): ReceiptData["codexLimits"] {
   if (!limits) return null;
+  // Without a reset time, a snapshot can only be current if it's younger than its own window.
+  const stillOpen = (w: NonNullable<CodexLimits["primary"]>) =>
+    w.resetsAt ? w.resetsAt > now : limits.observedAt.getTime() + w.windowMinutes * 60_000 > now.getTime();
   const live = (w: CodexLimits["primary"], minutes: number) =>
-    w && w.windowMinutes === minutes && (!w.resetsAt || w.resetsAt > now) ? w.usedPercent : null;
+    w && w.windowMinutes === minutes && stillOpen(w) ? w.usedPercent : null;
   const result = {
     fiveHourUsedPercent: live(limits.primary, FIVE_HOURS_MIN) ?? live(limits.secondary, FIVE_HOURS_MIN),
     weeklyUsedPercent: live(limits.secondary, ONE_WEEK_MIN) ?? live(limits.primary, ONE_WEEK_MIN),

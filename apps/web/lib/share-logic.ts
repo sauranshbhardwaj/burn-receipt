@@ -1,5 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
-import { receiptDataSchema, valueMultiple, type ReceiptData } from "@burn-receipt/core";
+import { isIPv6 } from "node:net";
+import { hasPublicPlanPrices, receiptDataSchema, valueMultiple, type ReceiptData } from "@burn-receipt/core";
 
 /** Matches the CHECK constraint on receipts.id. */
 export const RECEIPT_ID_PATTERN = /^[A-Za-z0-9_-]{10}$/;
@@ -12,8 +13,23 @@ export function newReceiptId(): string {
   return randomBytes(8).toString("base64url").slice(0, 10);
 }
 
+/**
+ * Who a rate limit applies to. One IPv6 connection typically controls a whole /64 (2^64
+ * addresses), so limiting per full address would be no limit at all — group by /64 instead.
+ */
+export function rateLimitKey(ip: string): string {
+  if (!isIPv6(ip)) return ip;
+  const [head = "", tail = ""] = ip.toLowerCase().split("::");
+  const headParts = head ? head.split(":") : [];
+  const tailParts = tail ? tail.split(":") : [];
+  const groups = ip.includes("::")
+    ? [...headParts, ...Array<string>(8 - headParts.length - tailParts.length).fill("0"), ...tailParts]
+    : headParts;
+  return `${groups.slice(0, 4).map((g) => g.padStart(4, "0")).join(":")}::/64`;
+}
+
 export function hashIp(ip: string, secret: string): string {
-  return createHmac("sha256", secret).update(ip).digest("hex");
+  return createHmac("sha256", secret).update(rateLimitKey(ip)).digest("hex");
 }
 
 /** First hop of x-forwarded-for is the client on Vercel; fall back to a shared bucket. */
@@ -32,8 +48,8 @@ export type StoredReceipt = {
 
 /** Storage boundary, so the share flow can be tested without a database. */
 export type ReceiptStore = {
-  countSince(ipHash: string, since: Date): Promise<number>;
-  insert(receipt: StoredReceipt): Promise<void>;
+  /** Atomically checks the sharer's recent count and inserts; false when over the limit. */
+  insertIfUnderLimit(receipt: StoredReceipt, limit: typeof RATE_LIMIT): Promise<boolean>;
 };
 
 export type ShareResult =
@@ -46,7 +62,6 @@ export async function createShare(input: {
   secret: string;
   siteUrl: string;
   store: ReceiptStore;
-  now?: Date;
 }): Promise<ShareResult> {
   if (Buffer.byteLength(input.rawBody, "utf8") > MAX_BODY_BYTES) {
     return { status: 413, body: { error: "Receipt is too large." } };
@@ -64,24 +79,25 @@ export async function createShare(input: {
   }
 
   const ipHash = hashIp(input.ip, input.secret);
-  const now = input.now ?? new Date();
   try {
-    const recent = await input.store.countSince(ipHash, new Date(now.getTime() - RATE_LIMIT.windowMs));
-    if (recent >= RATE_LIMIT.max) {
-      return { status: 429, body: { error: "Too many shares from your network. Try again in an hour." } };
-    }
-
     const data = parsed.data;
     const id = newReceiptId();
     const multiple = valueMultiple(data);
-    await input.store.insert({
-      id,
-      data,
-      totalUsd: data.totalUsd,
-      valueMultiple: multiple === null ? null : Math.round(multiple * 100) / 100,
-      avoidableUsd: data.avoidableUsd,
-      ipHash,
-    });
+    const inserted = await input.store.insertIfUnderLimit(
+      {
+        id,
+        data,
+        totalUsd: data.totalUsd,
+        // Typed-in plan prices can't be verified, so those receipts don't compete on value.
+        valueMultiple: multiple !== null && hasPublicPlanPrices(data) ? Math.round(multiple * 100) / 100 : null,
+        avoidableUsd: data.avoidableUsd,
+        ipHash,
+      },
+      RATE_LIMIT,
+    );
+    if (!inserted) {
+      return { status: 429, body: { error: "Too many shares from your network. Try again in an hour." } };
+    }
     return { status: 201, body: { id, url: new URL(`/r/${id}`, input.siteUrl).toString() } };
   } catch {
     return { status: 500, body: { error: "Couldn't save your receipt. Please try again." } };

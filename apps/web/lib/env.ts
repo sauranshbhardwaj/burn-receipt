@@ -7,7 +7,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
   /** Secret salt for hashing sharer IPs (rate limiting only). */
   IP_HASH_SECRET: z.string().min(16),
-  NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
+  NEXT_PUBLIC_SITE_URL: z.url(),
+  /** Bearer token for the takedown endpoint; unset = takedowns disabled. */
+  ADMIN_TOKEN: z.string().min(24).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

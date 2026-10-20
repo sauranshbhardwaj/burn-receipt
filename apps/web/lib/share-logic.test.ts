@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReceiptData } from "@burn-receipt/core";
-import { clientIp, createShare, hashIp, MAX_BODY_BYTES, newReceiptId, RATE_LIMIT, RECEIPT_ID_PATTERN, type ReceiptStore, type StoredReceipt } from "./share-logic";
+import { clientIp, createShare, hashIp, MAX_BODY_BYTES, newReceiptId, RATE_LIMIT, rateLimitKey, RECEIPT_ID_PATTERN, type ReceiptStore, type StoredReceipt } from "./share-logic";
 
 const receipt: ReceiptData = {
   version: 1,
@@ -29,12 +29,11 @@ const receipt: ReceiptData = {
 function memoryStore(existing = 0, failing = false) {
   const inserted: StoredReceipt[] = [];
   const store: ReceiptStore = {
-    countSince: async () => {
+    insertIfUnderLimit: async (r, limit) => {
       if (failing) throw new Error("db down");
-      return existing;
-    },
-    insert: async (r) => {
+      if (existing + inserted.length >= limit.max) return false;
       inserted.push(r);
+      return true;
     },
   };
   return { store, inserted };
@@ -67,6 +66,17 @@ describe("createShare", () => {
     expect((await call("x".repeat(MAX_BODY_BYTES + 1), memoryStore().store)).status).toBe(413);
   });
 
+  it("keeps receipts with typed-in plan prices off the value board", async () => {
+    const { store, inserted } = memoryStore();
+    const typedIn: ReceiptData = {
+      ...receipt,
+      tools: [{ source: "codex", costUsd: 450, planLabel: "ChatGPT Pro Lite", planUsdForPeriod: 1 }],
+      paidUsd: 1,
+    };
+    expect((await call(JSON.stringify(typedIn), store)).status).toBe(201);
+    expect(inserted[0]?.valueMultiple).toBeNull();
+  });
+
   it("rate limits per hashed IP", async () => {
     const { store, inserted } = memoryStore(RATE_LIMIT.max);
     expect((await call(JSON.stringify(receipt), store)).status).toBe(429);
@@ -87,6 +97,15 @@ describe("helpers", () => {
   it("hashes IPs deterministically per secret", () => {
     expect(hashIp("1.2.3.4", "a")).toBe(hashIp("1.2.3.4", "a"));
     expect(hashIp("1.2.3.4", "a")).not.toBe(hashIp("1.2.3.4", "b"));
+  });
+
+  it("groups IPv6 sharers by /64 so rotating addresses doesn't dodge the limit", () => {
+    expect(rateLimitKey("2001:db8:abcd:12:1:2:3:4")).toBe("2001:0db8:abcd:0012::/64");
+    expect(rateLimitKey("2001:db8:abcd:12::99")).toBe("2001:0db8:abcd:0012::/64");
+    expect(rateLimitKey("2001:db8::1")).toBe("2001:0db8:0000:0000::/64");
+    expect(hashIp("2001:db8:abcd:12::1", "s")).toBe(hashIp("2001:db8:abcd:12:ffff::2", "s"));
+    expect(rateLimitKey("203.0.113.7")).toBe("203.0.113.7");
+    expect(rateLimitKey("unknown")).toBe("unknown");
   });
 
   it("takes the first x-forwarded-for hop", () => {

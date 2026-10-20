@@ -16,27 +16,30 @@ function db(): SupabaseClient {
 }
 
 export const supabaseReceiptStore: ReceiptStore = {
-  async countSince(ipHash, since) {
-    const { count, error } = await db()
-      .from("receipts")
-      .select("id", { count: "exact", head: true })
-      .eq("ip_hash", ipHash)
-      .gte("created_at", since.toISOString());
-    if (error) throw error;
-    return count ?? 0;
-  },
-  async insert(receipt) {
-    const { error } = await db().from("receipts").insert({
-      id: receipt.id,
-      data: receipt.data,
-      total_usd: receipt.totalUsd,
-      value_multiple: receipt.valueMultiple,
-      avoidable_usd: receipt.avoidableUsd,
-      ip_hash: receipt.ipHash,
+  async insertIfUnderLimit(receipt, limit) {
+    // One Postgres function does count + insert under a per-sharer lock (see the migration).
+    const { data, error } = await db().rpc("insert_receipt_rate_limited", {
+      p_id: receipt.id,
+      p_data: receipt.data,
+      p_total_usd: receipt.totalUsd,
+      p_value_multiple: receipt.valueMultiple,
+      p_avoidable_usd: receipt.avoidableUsd,
+      p_ip_hash: receipt.ipHash,
+      p_max_per_window: limit.max,
+      p_window: `${Math.round(limit.windowMs / 1000)} seconds`,
     });
     if (error) throw error;
+    return data === true;
   },
 };
+
+/** Takes a receipt off its page, its images and the boards. */
+export async function hideReceipt(id: string): Promise<boolean> {
+  if (!RECEIPT_ID_PATTERN.test(id)) return false;
+  const { data, error } = await db().from("receipts").update({ hidden: true }).eq("id", id).select("id");
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
 
 /** Re-validates on the way out too: rows written by an older schema version just don't render. */
 function parseRow(row: { id: string; data: unknown }): { id: string; data: ReceiptData } | null {
@@ -46,7 +49,7 @@ function parseRow(row: { id: string; data: unknown }): { id: string; data: Recei
 
 export async function fetchReceipt(id: string): Promise<ReceiptData | null> {
   if (!RECEIPT_ID_PATTERN.test(id)) return null;
-  const { data, error } = await db().from("receipts").select("id, data").eq("id", id).maybeSingle();
+  const { data, error } = await db().from("receipts").select("id, data").eq("id", id).eq("hidden", false).maybeSingle();
   if (error) throw error;
   return data ? (parseRow(data)?.data ?? null) : null;
 }
@@ -54,11 +57,14 @@ export async function fetchReceipt(id: string): Promise<ReceiptData | null> {
 export type BoardEntry = { id: string; data: ReceiptData };
 
 export async function fetchBoard(order: "value_multiple" | "avoidable_usd" | "created_at", limit: number): Promise<BoardEntry[]> {
-  const { data, error } = await db()
+  const query = db()
     .from("receipts")
     .select("id, data")
+    .eq("hidden", false)
     .order(order, { ascending: false, nullsFirst: false })
     .limit(limit);
+  // Receipts with typed-in plan prices have no verifiable multiple and stay off the value board.
+  const { data, error } = await (order === "value_multiple" ? query.not("value_multiple", "is", null) : query);
   if (error) throw error;
   return (data ?? []).map(parseRow).filter((row): row is BoardEntry => row !== null);
 }

@@ -13,10 +13,11 @@ const [regular, bold] = await Promise.all([
   readFile(join(fontsDir, "JetBrainsMono-Bold.ttf")),
 ]);
 
-const IMMUTABLE = "public, max-age=31536000, immutable";
+// Browsers keep it an hour, the CDN a day: a receipt never changes, but a takedown must stick.
+const IMAGE_CACHE = "public, max-age=3600, s-maxage=86400";
 
 /** Renders one of the shared core layouts — the exact same tree the CLI turns into a PNG. */
-export function renderImage(tree: ReceiptNode, size: { width: number; height: number }, cache = IMMUTABLE): ImageResponse {
+export function renderImage(tree: ReceiptNode, size: { width: number; height: number }, cache = IMAGE_CACHE): ImageResponse {
   // next/og hands the element to satori, which only needs the {type, props} shape our tree has.
   return new ImageResponse(tree as unknown as ReactElement, {
     ...size,

@@ -82,16 +82,26 @@ async function main(): Promise<void> {
     console.log(formatTextReceipt(data));
   }
 
+  // With --json, stdout is reserved for the JSON so `| jq` keeps working; notes go to stderr.
+  const note = (message: string) => (options.json ? console.error(message) : console.log(message));
+
   if (options.image) {
     const path = resolve(options.out ?? `burn-receipt-${until.toISOString().slice(0, 10)}.png`);
-    await writeFile(path, await renderReceiptPng(data));
-    if (!options.json) console.log(`  Saved your receipt image → ${path}`);
+    try {
+      await writeFile(path, await renderReceiptPng(data));
+      note(`  Saved your receipt image → ${path}`);
+    } catch (error) {
+      // e.g. running from a read-only folder; the receipt and --share still work.
+      const reason = error instanceof Error && "code" in error ? ` (${String(error.code)})` : "";
+      console.error(`  Couldn't save the image to ${path}${reason}. Try --out ~/burn-receipt.png`);
+      process.exitCode = 1;
+    }
   }
 
   if (options.share) {
     try {
       const url = await shareReceipt(data);
-      console.log(
+      note(
         `  Share link → ${url}\n  (only the numbers above were uploaded — never your chats or project names;` +
           " shared receipts can appear on the public board)",
       );
