@@ -116,6 +116,8 @@ export class ClaudeCodeEventCollector {
     // Each duplicate carries a different content block, so tool use may appear on any of them.
     existing.usedTools ||= parsed.event.usedTools;
     if (timestamp < existing.timestamp) existing.timestamp = timestamp;
+    // A streamed reply's later records carry the final, larger output count; keep that one.
+    if (parsed.event.tokens.output > existing.tokens.output) existing.tokens = parsed.event.tokens;
   }
 
   events(): UsageEvent[] {

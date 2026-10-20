@@ -106,6 +106,19 @@ describe("ClaudeCodeEventCollector", () => {
     expect(events[0]?.usedTools).toBe(true);
   });
 
+  it("keeps the final (largest) usage of a streamed reply, whichever copy carries it", () => {
+    const collector = new ClaudeCodeEventCollector(RANGE);
+    const usage = (output: number) => ({ input_tokens: 5, output_tokens: output, cache_read_input_tokens: 100 });
+    for (const [output, type] of [[1, "thinking"], [500, "tool_use"], [120, "text"]] as const) {
+      const parsed = parseClaudeCodeLine(assistantLine({ contentType: type, usage: usage(output) }), "/x/s.jsonl");
+      if (parsed) collector.add(parsed);
+    }
+    const [event] = collector.events();
+    expect(event?.tokens.output).toBe(500);
+    expect(event?.tokens.cacheRead).toBe(100);
+    expect(event?.usedTools).toBe(true);
+  });
+
   it("keeps distinct responses separate", () => {
     const collector = new ClaudeCodeEventCollector(RANGE);
     for (const id of ["msg_1", "msg_2"]) {
