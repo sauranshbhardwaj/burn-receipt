@@ -6,6 +6,7 @@ function event(model: string, tokens: Partial<TokenCounts>, extra: Partial<Usage
   return {
     source: "claude-code",
     sessionId: "s",
+    threadId: "s",
     timestamp: new Date("2026-10-15T00:00:00Z"),
     model,
     projectPath: null,

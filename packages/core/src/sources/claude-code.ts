@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join, sep } from "node:path";
+import { basename, join, sep } from "node:path";
 import { z } from "zod";
 import { findJsonlFiles, readLines, safeJsonParse } from "./jsonl.js";
 import type { DateRange, UsageEvent } from "../types.js";
@@ -64,6 +64,7 @@ export function parseClaudeCodeLine(line: string, filePath: string): ParsedLine 
   const cacheWrite5m = split ? split.ephemeral_5m_input_tokens : cacheWriteTotal;
 
   const usedTools = (record.message.content ?? []).some((block) => block.type === "tool_use");
+  const inSubagentFile = filePath.includes(`${sep}subagents${sep}`);
 
   // One API response is logged as several records (one per content block), each repeating
   // the same usage. Without de-duplication, totals come out ~2x too high.
@@ -76,10 +77,11 @@ export function parseClaudeCodeLine(line: string, filePath: string): ParsedLine 
     event: {
       source: "claude-code",
       sessionId: record.sessionId,
+      threadId: inSubagentFile ? `${record.sessionId}:${basename(filePath, ".jsonl")}` : record.sessionId,
       timestamp,
       model: record.message.model,
       projectPath: record.cwd ?? null,
-      isSubagent: record.isSidechain === true || filePath.includes(`${sep}subagents${sep}`),
+      isSubagent: record.isSidechain === true || inSubagentFile,
       usedTools,
       tokens: {
         input: usage.input_tokens,

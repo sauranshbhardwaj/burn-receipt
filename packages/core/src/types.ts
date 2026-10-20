@@ -14,6 +14,8 @@ export type TokenCounts = {
 export type UsageEvent = {
   source: Source;
   sessionId: string;
+  /** One conversation thread: the main session, or one subagent within it. Caches are per thread. */
+  threadId: string;
   timestamp: Date;
   model: string;
   /** Working directory of the session. Never rendered on a shared receipt. */

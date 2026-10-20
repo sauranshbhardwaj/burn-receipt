@@ -97,14 +97,17 @@ export function addCost(target: CostBreakdown, add: CostBreakdown): void {
   target.total += add.total;
 }
 
+/** Fast mode and US-only inference multiply every token category (caching multipliers stack on top). */
+export function priceMultiplier(event: Pick<UsageEvent, "speed" | "inferenceGeo">): number {
+  return (event.speed === "fast" ? FAST_MODE_MULTIPLIER : 1) * (event.inferenceGeo === "us" ? US_ONLY_INFERENCE_MULTIPLIER : 1);
+}
+
 /** API-equivalent cost of one response, or null if the model is unpriced. */
 export function eventCost(event: UsageEvent): CostBreakdown | null {
   const price = resolvePrice(event.model, event.tokens);
   if (!price) return null;
 
-  // Fast mode and US-only inference multiply every token category (caching multipliers stack on top).
-  const multiplier =
-    (event.speed === "fast" ? FAST_MODE_MULTIPLIER : 1) * (event.inferenceGeo === "us" ? US_ONLY_INFERENCE_MULTIPLIER : 1);
+  const multiplier = priceMultiplier(event);
   const rate = (tokens: number, perMillion: number) => (tokens / MILLION) * perMillion * multiplier;
 
   const t = event.tokens;

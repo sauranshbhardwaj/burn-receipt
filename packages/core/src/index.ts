@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./aggregate.js";
 export * from "./pricing.js";
+export * from "./analyze.js";
 export {
   claudeCodeProjectDirs,
   loadClaudeCodeEvents,
