@@ -53,6 +53,10 @@ describe("formatTextReceipt", () => {
     expect(unknown).not.toContain("money's worth");
   });
 
+  it("says 1 day, not 1 days", () => {
+    expect(formatTextReceipt({ ...base, periodDays: 1 })).toContain("(last 1 day)");
+  });
+
   it("mentions replies that couldn't be priced", () => {
     expect(formatTextReceipt({ ...base, unpricedReplies: 436 })).toContain("436 replies from models without a public price");
   });

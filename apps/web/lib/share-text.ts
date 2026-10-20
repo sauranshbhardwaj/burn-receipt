@@ -1,9 +1,9 @@
-import { formatMultiple, formatUsd, toolsLabel, valueMultiple, type ReceiptData } from "@burn-receipt/core";
+import { formatDays, formatMultiple, formatUsd, toolsLabel, valueMultiple, type ReceiptData } from "@burn-receipt/core";
 
 /** The one-liner that goes into the X / Reddit share — leads with the most striking true number. */
 export function shareHeadline(data: ReceiptData): string {
   const multiple = valueMultiple(data);
-  const period = data.periodDays === 7 ? "this week" : data.periodDays === 30 ? "this month" : `in ${data.periodDays} days`;
+  const period = data.periodDays === 7 ? "this week" : data.periodDays === 30 ? "this month" : `in ${formatDays(data.periodDays)}`;
   const parts = [
     multiple !== null && data.paidUsd !== null
       ? `My ${toolsLabel(data)} plan burned ${formatUsd(data.totalUsd)} of API value ${period} — ${formatMultiple(multiple)} what I paid (${formatUsd(data.paidUsd)}).`

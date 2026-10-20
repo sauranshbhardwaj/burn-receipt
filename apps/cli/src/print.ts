@@ -1,5 +1,6 @@
 import {
   formatCount,
+  formatDays,
   formatHours,
   formatMultiple,
   formatPercent,
@@ -21,7 +22,7 @@ const row = (label: string, value: string) =>
 /** The terminal version of the receipt. Same wording as the image, no colors so it pastes cleanly. */
 export function formatTextReceipt(data: ReceiptData): string {
   const out: string[] = [];
-  out.push("", `  BURN RECEIPT — ${toolsLabel(data)}`, `  ${periodLabel(data)} (last ${data.periodDays} days)`, `  ${"-".repeat(WIDTH)}`);
+  out.push("", `  BURN RECEIPT — ${toolsLabel(data)}`, `  ${periodLabel(data)} (last ${formatDays(data.periodDays)})`, `  ${"-".repeat(WIDTH)}`);
   for (const line of [...data.lines].sort((a, b) => b.usd - a.usd)) {
     out.push(row(LINE_TEXT[line.id].label, formatUsd(line.usd)));
   }

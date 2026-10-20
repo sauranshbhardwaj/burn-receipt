@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReceiptData } from "../receipt-data";
-import { formatHours, formatMultiple, formatTokens, formatUsd, periodLabel } from "./format";
+import { formatDays, formatHours, formatMultiple, formatTokens, formatUsd, periodLabel } from "./format";
 
 const period = (periodDays: number, periodEnd: string) => ({ periodDays, periodEnd }) as ReceiptData;
 
@@ -17,6 +17,8 @@ describe("format", () => {
   });
 
   it("formats multiples and durations readably", () => {
+    expect(formatDays(1)).toBe("1 day");
+    expect(formatDays(27)).toBe("27 days");
     expect(formatMultiple(33.45)).toBe("33x");
     expect(formatMultiple(8.94)).toBe("8.9x");
     expect(formatHours(0.2)).toBe("12 min");

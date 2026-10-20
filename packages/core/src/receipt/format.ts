@@ -37,6 +37,11 @@ export function formatPercent(share: number): string {
   return `${Math.round(share * 100)}%`;
 }
 
+/** "1 day", "27 days" */
+export function formatDays(days: number): string {
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
 export function formatHours(hours: number): string {
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
   if (hours < 48) return `${hours.toFixed(1)}h`;

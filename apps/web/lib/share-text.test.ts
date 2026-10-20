@@ -42,6 +42,12 @@ describe("share text", () => {
     );
   });
 
+  it("says 1 day, not 1 days", () => {
+    expect(shareHeadline({ ...data, paidUsd: null, avoidableUsd: 0, periodDays: 1 })).toBe(
+      "My Claude Code + Codex usage was worth $7,256 at API prices in 1 day.",
+    );
+  });
+
   it("builds properly encoded share links", () => {
     const x = new URL(xShareUrl(data, "https://burnreceipt.dev/r/abc"));
     expect(x.hostname).toBe("x.com");

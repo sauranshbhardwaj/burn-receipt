@@ -5,6 +5,7 @@ import {
   buildReceiptData,
   CLAUDE_PLANS,
   codexPlanFromType,
+  formatDays,
   loadClaudeCodeEvents,
   loadCodexEvents,
   type Plan,
@@ -49,13 +50,13 @@ async function main(): Promise<void> {
   const until = new Date();
   const range = { since: new Date(until.getTime() - options.days * DAY_MS), until };
   // Long windows over big histories take a few seconds; say so on stderr so pipes stay clean.
-  if (process.stderr.isTTY && !options.json) process.stderr.write(`  Reading your last ${options.days} days of history…\r`);
+  if (process.stderr.isTTY && !options.json) process.stderr.write(`  Reading your last ${formatDays(options.days)} of history…\r`);
   const [claudeEvents, codex] = await Promise.all([loadClaudeCodeEvents(range), loadCodexEvents(range)]);
   if (process.stderr.isTTY && !options.json) process.stderr.write(`${" ".repeat(60)}\r`);
 
   if (claudeEvents.length === 0 && codex.events.length === 0) {
     console.log(
-      `No Claude Code or Codex usage found in the last ${options.days} days.\n` +
+      `No Claude Code or Codex usage found in the last ${formatDays(options.days)}.\n` +
         "We look in ~/.claude/projects and ~/.codex/sessions (or $CLAUDE_CONFIG_DIR / $CODEX_HOME).\n" +
         "Try a longer window, e.g. npx burn-receipt --days 30",
     );

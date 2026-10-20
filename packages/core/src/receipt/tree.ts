@@ -1,6 +1,7 @@
 import type { ReceiptData } from "../receipt-data";
 import {
   formatCount,
+  formatDays,
   formatHours,
   formatMultiple,
   formatPercent,
@@ -211,7 +212,7 @@ export function receiptTree(data: ReceiptData): ReceiptNode {
         borderRadius: 18,
         overflow: "hidden",
       },
-      titleBar(`burn-receipt — last ${data.periodDays} days`),
+      titleBar(`burn-receipt — last ${formatDays(data.periodDays)}`),
       h(
         "div",
         { flexDirection: "column", padding: "26px 44px 0 44px", flexGrow: 1 },
@@ -284,7 +285,7 @@ export function cardTree(data: ReceiptData): ReceiptNode {
         borderRadius: 18,
         overflow: "hidden",
       },
-      titleBar(`burn-receipt — ${toolsLabel(data)} — last ${data.periodDays} days`),
+      titleBar(`burn-receipt — ${toolsLabel(data)} — last ${formatDays(data.periodDays)}`),
       h(
         "div",
         { flexGrow: 1, padding: "28px 40px 0 40px" },
