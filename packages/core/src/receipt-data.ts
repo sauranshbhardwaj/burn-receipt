@@ -54,7 +54,25 @@ export const receiptDataSchema = z
     unpricedReplies: count,
     pricesAsOf: z.iso.date(),
   })
-  .strict();
+  .strict()
+  .superRefine((data, ctx) => {
+    // Receipts from the CLI always add up (amounts are rounded to cents, so allow rounding slack).
+    // This turns away hand-crafted numbers sent straight to the share API.
+    const slack = (total: number) => Math.max(0.05 * 7, total * 0.001);
+    const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
+    if (Math.abs(sum(data.lines.map((l) => l.usd)) - data.totalUsd) > slack(data.totalUsd)) {
+      ctx.addIssue({ code: "custom", path: ["lines"], message: "Line items must add up to the total." });
+    }
+    if (Math.abs(sum(data.tools.map((t) => t.costUsd)) - data.totalUsd) > slack(data.totalUsd)) {
+      ctx.addIssue({ code: "custom", path: ["tools"], message: "Tool costs must add up to the total." });
+    }
+    if (data.avoidableUsd > data.totalUsd) {
+      ctx.addIssue({ code: "custom", path: ["avoidableUsd"], message: "Avoidable spend can't exceed the total." });
+    }
+    if (new Set(data.lines.map((l) => l.id)).size !== data.lines.length) {
+      ctx.addIssue({ code: "custom", path: ["lines"], message: "Each line item may appear once." });
+    }
+  });
 
 export type ReceiptData = z.infer<typeof receiptDataSchema>;
 

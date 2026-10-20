@@ -118,6 +118,19 @@ describe("receiptDataSchema", () => {
     expect(receiptDataSchema.safeParse({ ...valid(), tools }).success).toBe(false);
   });
 
+  it("rejects receipts whose numbers don't add up (hand-crafted shares)", () => {
+    const good = valid();
+    expect(receiptDataSchema.safeParse({ ...good, totalUsd: 9_999_999 }).success).toBe(false);
+    expect(receiptDataSchema.safeParse({ ...good, avoidableUsd: good.totalUsd + 1 }).success).toBe(false);
+    const doubled = { ...good, lines: [...good.lines, ...good.lines] };
+    expect(receiptDataSchema.safeParse(doubled).success).toBe(false);
+  });
+
+  it("accepts rounding differences of a few cents", () => {
+    const good = valid();
+    expect(receiptDataSchema.safeParse({ ...good, totalUsd: good.totalUsd + 0.03 }).success).toBe(true);
+  });
+
   it("rejects absurd or negative numbers", () => {
     expect(receiptDataSchema.safeParse({ ...valid(), totalUsd: -1 }).success).toBe(false);
     expect(receiptDataSchema.safeParse({ ...valid(), totalUsd: Number.POSITIVE_INFINITY }).success).toBe(false);
