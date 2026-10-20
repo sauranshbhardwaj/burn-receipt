@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
-import { buildReceiptData, CLAUDE_PLANS, codexPlanFromType, loadClaudeCodeEvents, loadCodexEvents } from "@burn-receipt/core";
-import { renderReceiptPng } from "./render.js";
+import { buildReceiptData, CLAUDE_PLANS, codexPlanFromType, loadClaudeCodeEvents, loadCodexEvents } from "../packages/core/src/index.js";
+import { renderReceiptPng } from "../apps/cli/src/render.js";
 const days = Number(process.argv[2] ?? 30);
 const until = new Date(); const since = new Date(until.getTime() - days * 86_400_000);
 const [claude, codex] = await Promise.all([loadClaudeCodeEvents({ since, until }), loadCodexEvents({ since, until })]);
