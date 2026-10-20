@@ -91,7 +91,10 @@ async function main(): Promise<void> {
   if (options.share) {
     try {
       const url = await shareReceipt(data);
-      console.log(`  Share link → ${url}\n  (only the numbers above were uploaded — never your chats or project names)`);
+      console.log(
+        `  Share link → ${url}\n  (only the numbers above were uploaded — never your chats or project names;` +
+          " shared receipts can appear on the public board)",
+      );
     } catch (error) {
       console.error(`  ${error instanceof ShareError ? error.message : "Sharing failed unexpectedly."}`);
       process.exitCode = 1;

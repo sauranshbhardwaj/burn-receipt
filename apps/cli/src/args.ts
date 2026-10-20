@@ -24,7 +24,8 @@ Options:
   --codex-plan-price <usd> Monthly price of your ChatGPT plan, if we can't detect it
   --out <file.png>         Where to save the receipt image
   --no-image               Print the receipt only, don't save an image
-  --share                  Upload the receipt's numbers (never your chats) and get a share link
+  --share                  Upload the receipt's numbers (never your chats) for a share link;
+                           shared receipts can appear on the public board
   --json                   Print the receipt data as JSON
   -h, --help               Show this help
 
