@@ -74,6 +74,20 @@ function barcode(seed: number, width: number): ReceiptNode {
   return h("div", { overflow: "hidden", width }, ...bars);
 }
 
+/** Bar scaled to the biggest line; idle reloads in red because they're the avoidable part. */
+function costBar(line: ReceiptData["lines"][number], maxUsd: number, width: number): ReceiptNode {
+  return h(
+    "div",
+    { width, height: 14, background: C.track, marginRight: 22, borderRadius: 3 },
+    h("div", {
+      width: Math.max(4, Math.round((line.usd / maxUsd) * width)),
+      height: 14,
+      borderRadius: 3,
+      background: line.id === "idleReloads" ? C.red : C.amber,
+    }),
+  );
+}
+
 function divider(style: "dashed" | "double", marginTop: number): ReceiptNode {
   return h("div", { width: "100%", borderTop: `${style === "double" ? 4 : 2}px ${style} ${C.dim}`, marginTop, marginBottom: 18 });
 }
@@ -104,16 +118,7 @@ export function receiptTree(data: ReceiptData): ReceiptNode {
         h(
           "div",
           { alignItems: "center" },
-          h(
-            "div",
-            { width: 150, height: 14, background: C.track, marginRight: 22, borderRadius: 3 },
-            h("div", {
-              width: Math.max(4, Math.round((line.usd / maxLine) * 150)),
-              height: 14,
-              borderRadius: 3,
-              background: line.id === "idleReloads" ? C.red : C.amber,
-            }),
-          ),
+          costBar(line, maxLine, 150),
           h("div", { fontSize: 26, fontWeight: 700, color: C.text, width: 140, justifyContent: "flex-end" }, formatUsd(line.usd)),
         ),
       ),
@@ -202,6 +207,86 @@ export function receiptTree(data: ReceiptData): ReceiptNode {
         barcode(data.totalUsd + data.replies, 600),
         h("div", { fontSize: 17, color: C.muted, marginTop: 10 }, `API-equivalent estimate at list prices as of ${data.pricesAsOf} · not a bill`),
         h("div", { fontSize: 22, color: C.green, marginTop: 6 }, "get yours → npx burn-receipt"),
+      ),
+    ),
+  );
+}
+
+/** Number of line items the 1200×630 preview card has room for. */
+const CARD_LINES = 4;
+
+/** The link-preview card (Open Graph / X): the headline numbers big, top costs on the right. */
+export function cardTree(data: ReceiptData): ReceiptNode {
+  const multiple = valueMultiple(data);
+  const topLines = [...data.lines].sort((a, b) => b.usd - a.usd).slice(0, CARD_LINES);
+  const maxLine = Math.max(...topLines.map((l) => l.usd), 0.01);
+
+  return h(
+    "div",
+    {
+      width: CARD_SIZE.width,
+      height: CARD_SIZE.height,
+      background: C.page,
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: RECEIPT_FONT_FAMILY,
+    },
+    h(
+      "div",
+      {
+        flexDirection: "column",
+        width: CARD_SIZE.width - 48,
+        height: CARD_SIZE.height - 48,
+        background: C.window,
+        border: `2px solid ${C.border}`,
+        borderRadius: 18,
+        overflow: "hidden",
+      },
+      titleBar(`burn-receipt — ${toolsLabel(data)} — last ${data.periodDays} days`),
+      h(
+        "div",
+        { flexGrow: 1, padding: "28px 40px 0 40px" },
+        h(
+          "div",
+          { flexDirection: "column", width: 520 },
+          h("div", { fontSize: 30, fontWeight: 700, color: C.amber, letterSpacing: 3 }, "BURN RECEIPT"),
+          h("div", { fontSize: 92, fontWeight: 700, color: C.amber, marginTop: 10 }, formatUsd(data.totalUsd)),
+          h(
+            "div",
+            { fontSize: 28, color: C.text, marginTop: 2 },
+            data.paidUsd !== null ? `of AI for ${formatUsd(data.paidUsd)}` : "of AI, at API prices",
+          ),
+          multiple !== null
+            ? h("div", { fontSize: 32, fontWeight: 700, color: C.green, marginTop: 22 }, `> ${formatMultiple(multiple)} your money's worth`)
+            : null,
+          data.avoidableUsd >= 1
+            ? h("div", { fontSize: 28, fontWeight: 700, color: C.red, marginTop: 14 }, `! ${formatUsd(data.avoidableUsd)} was avoidable`)
+            : null,
+        ),
+        h(
+          "div",
+          { flexDirection: "column", flexGrow: 1, marginLeft: 30, paddingTop: 14 },
+          h("div", { fontSize: 20, color: C.muted, marginBottom: 18 }, "WHERE IT WENT"),
+          ...topLines.map((line) =>
+            h(
+              "div",
+              { flexDirection: "column", marginBottom: 20 },
+              h(
+                "div",
+                { justifyContent: "space-between" },
+                h("div", { fontSize: 23, color: C.text }, LINE_TEXT[line.id].label),
+                h("div", { fontSize: 23, fontWeight: 700, color: C.text }, formatUsd(line.usd)),
+              ),
+              h("div", { marginTop: 8 }, costBar(line, maxLine, 520)),
+            ),
+          ),
+        ),
+      ),
+      h(
+        "div",
+        { justifyContent: "space-between", alignItems: "center", padding: "0 40px 24px 40px" },
+        h("div", { fontSize: 22, color: C.green }, "get yours → npx burn-receipt"),
+        h("div", { fontSize: 17, color: C.muted }, `API-equivalent estimate · prices as of ${data.pricesAsOf}`),
       ),
     ),
   );
