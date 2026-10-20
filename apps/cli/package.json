@@ -1,6 +1,6 @@
 {
   "name": "burn-receipt",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "See where your AI coding plan really burned — as a receipt.",
   "type": "module",
   "bin": {
