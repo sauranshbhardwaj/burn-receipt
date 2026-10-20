@@ -100,6 +100,13 @@ function topModel(a: Analysis): string | null {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const DAY_MS = 86_400_000;
+
+/** Whole days from the later of (range start, first usage) to the range end; at least 1. */
+function coveredDays(range: DateRange, firstEvent: Date | null): number {
+  const start = firstEvent && firstEvent > range.since ? firstEvent : range.since;
+  return Math.min(365, Math.max(1, Math.ceil((range.until.getTime() - start.getTime()) / DAY_MS)));
+}
 
 export function buildReceiptData(input: {
   range: DateRange;
@@ -107,16 +114,23 @@ export function buildReceiptData(input: {
   codexLimits?: CodexLimits | null;
   now?: Date;
 }): ReceiptData {
-  const days = Math.max(1, Math.round((input.range.until.getTime() - input.range.since.getTime()) / 86_400_000));
   const tools = input.tools.filter((tool) => tool.events.length > 0);
   const all = analyze(tools.flatMap((tool) => tool.events));
+  // Only count days that have history: someone who started 3 weeks ago and asks for --days 365
+  // didn't pay for a year of plan, so "you paid" must not say they did.
+  const days = coveredDays(input.range, all.firstEvent);
 
-  const toolRows = tools.map((tool) => ({
-    source: tool.source,
-    costUsd: round2(analyze(tool.events).totalCost),
-    planLabel: tool.plan?.label ?? null,
-    planUsdForPeriod: tool.plan?.monthlyUsd != null ? round2(planCostForDays(tool.plan.monthlyUsd, days)) : null,
-  }));
+  const toolRows = tools.map((tool) => {
+    const toolAnalysis = analyze(tool.events);
+    const monthly = tool.plan?.monthlyUsd;
+    return {
+      source: tool.source,
+      costUsd: round2(toolAnalysis.totalCost),
+      planLabel: tool.plan?.label ?? null,
+      planUsdForPeriod:
+        monthly != null ? round2(planCostForDays(monthly, coveredDays(input.range, toolAnalysis.firstEvent))) : null,
+    };
+  });
   // Only claim "you paid $X" when every tool on the receipt has a known price.
   const paid = toolRows.every((row) => row.planUsdForPeriod !== null)
     ? round2(toolRows.reduce((sum, row) => sum + (row.planUsdForPeriod ?? 0), 0))

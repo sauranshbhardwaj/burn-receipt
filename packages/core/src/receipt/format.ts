@@ -50,6 +50,10 @@ export function periodLabel(data: ReceiptData): string {
   const end = new Date(data.periodEnd);
   const start = new Date(end.getTime() - data.periodDays * 86_400_000);
   const day = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  // Spell out both years when the period crosses New Year, e.g. "Oct 21, 2025 – Oct 20, 2026".
+  if (start.getUTCFullYear() !== end.getUTCFullYear()) {
+    return `${day(start)}, ${start.getUTCFullYear()} – ${day(end)}, ${end.getUTCFullYear()}`;
+  }
   return `${day(start)} – ${day(end)}, ${end.getUTCFullYear()}`;
 }
 

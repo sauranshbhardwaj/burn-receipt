@@ -48,7 +48,10 @@ async function main(): Promise<void> {
 
   const until = new Date();
   const range = { since: new Date(until.getTime() - options.days * DAY_MS), until };
+  // Long windows over big histories take a few seconds; say so on stderr so pipes stay clean.
+  if (process.stderr.isTTY && !options.json) process.stderr.write(`  Reading your last ${options.days} days of history…\r`);
   const [claudeEvents, codex] = await Promise.all([loadClaudeCodeEvents(range), loadCodexEvents(range)]);
+  if (process.stderr.isTTY && !options.json) process.stderr.write(`${" ".repeat(60)}\r`);
 
   if (claudeEvents.length === 0 && codex.events.length === 0) {
     console.log(

@@ -41,9 +41,10 @@ describe("buildReceiptData", () => {
       now: NOW,
     });
     expect(receiptDataSchema.safeParse(data).success).toBe(true);
-    expect(data.periodDays).toBe(7);
+    // History starts Oct 15 10:00, so only ~5 of the 7 requested days are covered (and paid for).
+    expect(data.periodDays).toBe(5);
     expect(data.tools.map((t) => t.source)).toEqual(["claude-code", "codex"]);
-    expect(data.paidUsd).toBeCloseTo(46.03 + 4.6, 1);
+    expect(data.paidUsd).toBeCloseTo((200 * 12 * 5) / 365 + (20 * 12 * 5) / 365, 1);
     expect(data.topModel).toBe("claude-opus-5-5");
     expect(data.helperAgents).toBe(1);
   });
@@ -135,5 +136,24 @@ describe("receiptDataSchema", () => {
     expect(receiptDataSchema.safeParse({ ...valid(), totalUsd: -1 }).success).toBe(false);
     expect(receiptDataSchema.safeParse({ ...valid(), totalUsd: Number.POSITIVE_INFINITY }).success).toBe(false);
     expect(receiptDataSchema.safeParse({ ...valid(), helperShare: 1.5 }).success).toBe(false);
+  });
+});
+
+describe("covered period", () => {
+  it("only charges plan days that have history, per tool", () => {
+    const longRange = { since: new Date("2025-10-20T00:00:00Z"), until: new Date("2026-10-20T00:00:00Z") };
+    const recent = (source: UsageEvent["source"], model: string, iso: string) =>
+      ev(source, model, { output: 1000 }, { timestamp: new Date(iso) });
+    const data = buildReceiptData({
+      range: longRange,
+      tools: [
+        { source: "claude-code", events: [recent("claude-code", "claude-opus-5-5", "2026-09-20T00:00:00Z")], plan: CLAUDE_PLANS.max20x },
+        { source: "codex", events: [recent("codex", "gpt-6.1-sol", "2026-10-13T00:00:00Z")], plan: codexPlanFromType("plus") },
+      ],
+      now: NOW,
+    });
+    expect(data.periodDays).toBe(30);
+    expect(data.tools[0]?.planUsdForPeriod).toBeCloseTo((200 * 12 * 30) / 365, 2);
+    expect(data.tools[1]?.planUsdForPeriod).toBeCloseTo((20 * 12 * 7) / 365, 2);
   });
 });
