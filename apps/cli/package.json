@@ -3,13 +3,23 @@
   "version": "0.0.0",
   "description": "See where your AI coding plan really burned — as a receipt.",
   "type": "module",
-  "bin": { "burn-receipt": "./dist/cli.js" },
-  "files": ["dist"],
+  "bin": {
+    "burn-receipt": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json"
   },
-  "dependencies": { "@burn-receipt/core": "workspace:*" },
-  "devDependencies": { "tsup": "^9.0.0" }
+  "dependencies": {
+    "@burn-receipt/core": "workspace:*",
+    "@resvg/resvg-js": "^2.6.2",
+    "satori": "^0.63.0"
+  },
+  "devDependencies": {
+    "tsup": "^9.0.0"
+  }
 }
