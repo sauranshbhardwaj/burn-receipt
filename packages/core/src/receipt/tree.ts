@@ -259,7 +259,8 @@ export function receiptTree(data: ReceiptData): ReceiptNode {
 const CARD_LINES = 4;
 
 /** The link-preview card (Open Graph / X): the headline numbers big, top costs on the right. */
-export function cardTree(data: ReceiptData): ReceiptNode {
+/** `title` replaces the title bar text, e.g. to mark the homepage card as an example. */
+export function cardTree(data: ReceiptData, { title }: { title?: string } = {}): ReceiptNode {
   const multiple = valueMultiple(data);
   const topLines = [...data.lines].sort((a, b) => b.usd - a.usd).slice(0, CARD_LINES);
   const maxLine = Math.max(...topLines.map((l) => l.usd), 0.01);
@@ -285,7 +286,7 @@ export function cardTree(data: ReceiptData): ReceiptNode {
         borderRadius: 18,
         overflow: "hidden",
       },
-      titleBar(`burn-receipt — ${toolsLabel(data)} — last ${formatDays(data.periodDays)}`),
+      titleBar(title ?? `burn-receipt — ${toolsLabel(data)} — last ${formatDays(data.periodDays)}`),
       h(
         "div",
         { flexGrow: 1, padding: "28px 40px 0 40px" },
