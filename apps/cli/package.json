@@ -1,18 +1,21 @@
 {
   "name": "burn-receipt",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "See where your AI coding plan really burned — as a receipt.",
   "type": "module",
   "bin": {
     "burn-receipt": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsup",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "cp ../../README.md ../../LICENSE . && pnpm run build"
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
@@ -36,5 +39,15 @@
     "cost",
     "receipt",
     "cli"
-  ]
+  ],
+  "homepage": "https://burnreceipt.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sauranshbhardwaj/burn-receipt.git",
+    "directory": "apps/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/sauranshbhardwaj/burn-receipt/issues"
+  },
+  "author": "Sauransh Bhardwaj"
 }
