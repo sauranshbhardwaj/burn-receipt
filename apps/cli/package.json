@@ -15,12 +15,26 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@burn-receipt/core": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
     "satori": "^0.63.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "tsup": "^9.0.0"
-  }
+    "tsup": "^9.0.0",
+    "@burn-receipt/core": "workspace:*"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "ai",
+    "usage",
+    "tokens",
+    "cost",
+    "receipt",
+    "cli"
+  ]
 }

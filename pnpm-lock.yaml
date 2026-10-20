@@ -23,9 +23,6 @@ importers:
 
   apps/cli:
     dependencies:
-      '@burn-receipt/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
@@ -36,6 +33,9 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
+      '@burn-receipt/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       tsup:
         specifier: ^9.0.0
         version: 9.0.0(postcss@8.5.31)(tsx@4.23.15)(typescript@7.0.2)
